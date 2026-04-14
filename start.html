@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SEE YOU AT OFFF</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --margin: 4vh;
+    --gap: -48px;
+    /* divide remaining height evenly into 4 rows */
+    --s: calc((100vh - 2 * var(--margin) - 3 * var(--gap)) / 4);
+  }
+
+  body {
+    overflow: hidden;
+    background: #000;
+    font-family: "Google Sans", sans-serif;
+    height: 100vh; width: 100vw;
+  }
+
+  /* ── Start screen ── */
+  #start-screen {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  #start-btn {
+    padding: 16px 32px; font-size: 18px;
+    font-family: inherit; font-weight: bold;
+    background: black; color: white;
+    border: none; border-radius: 30px; cursor: pointer;
+  }
+
+  /* ── 3D scene ── */
+  #scene {
+    display: none;
+    width: 100vw; height: 100vh;
+    perspective: 1600px;
+    position: relative;
+  }
+
+  /* Each drum slot — positioned absolutely, centered horizontally */
+  .slot {
+    width: var(--s); height: var(--s);
+    position: absolute; left: 50%;
+    transform-style: preserve-3d;
+    /* JS applies: transform: translateX(-50%) rotateY(Xdeg) */
+  }
+  #slot1 { top: var(--margin); }
+  #slot2 { top: calc(var(--margin) + 1 * (var(--s) + var(--gap))); }
+  #slot3 { top: calc(var(--margin) + 2 * (var(--s) + var(--gap))); }
+  #slot4 { top: calc(var(--margin) + 3 * (var(--s) + var(--gap))); }
+
+  /* Each cube (one for spinning state, one for rest state) */
+  .cube {
+    width: var(--s); height: var(--s);
+    position: absolute; top: 0; left: 0;
+    transform-style: preserve-3d;
+  }
+
+  /* Individual letter faces */
+  .face {
+    position: absolute;
+    width: var(--s); height: var(--s);
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--s) * 0.68);
+    font-weight: bold; color: #fff;
+    backface-visibility: hidden;
+    user-select: none;
+  }
+
+  /* ── Face positions based on polygon type ── */
+
+  /* 2-sided: flat flip (like a coin) */
+  .faces-2 .face:nth-child(1) { transform: rotateY(  0deg) translateZ(calc(var(--s) * 0.04)); }
+  .faces-2 .face:nth-child(2) { transform: rotateY(180deg) translateZ(calc(var(--s) * 0.04)); }
+
+  /* 3-sided: triangular prism */
+  /* translateZ = (s/2) * tan(30°) ≈ s * 0.289 */
+  .faces-3 .face:nth-child(1) { transform: rotateY(  0deg) translateZ(calc(var(--s) * 0.289)); }
+  .faces-3 .face:nth-child(2) { transform: rotateY(120deg) translateZ(calc(var(--s) * 0.289)); }
+  .faces-3 .face:nth-child(3) { transform: rotateY(240deg) translateZ(calc(var(--s) * 0.289)); }
+
+  /* 4-sided: square prism */
+  /* translateZ = s/2 */
+  .faces-4 .face:nth-child(1) { transform: rotateY(  0deg) translateZ(calc(var(--s) / 2)); }
+  .faces-4 .face:nth-child(2) { transform: rotateY( 90deg) translateZ(calc(var(--s) / 2)); }
+  .faces-4 .face:nth-child(3) { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+  .faces-4 .face:nth-child(4) { transform: rotateY(270deg) translateZ(calc(var(--s) / 2)); }
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+  <button id="start-btn">Start</button>
+</div>
+
+<div id="scene">
+
+  <!-- Row 1: 3-face drum. Rest="O", Spin: S/E/E -->
+  <div class="slot" id="slot1">
+    <div class="cube faces-3" id="spin1" style="display:none">
+      <div class="face">S</div>
+      <div class="face">E</div>
+      <div class="face">E</div>
+    </div>
+    <div class="cube faces-3" id="rest1">
+      <div class="face">O</div>
+      <div class="face">E</div><!-- hidden back face -->
+      <div class="face">E</div><!-- hidden back face -->
+    </div>
+  </div>
+
+  <!-- Row 2: 3-face drum. Rest="F", Spin: Y/O/U -->
+  <div class="slot" id="slot2">
+    <div class="cube faces-3" id="spin2" style="display:none">
+      <div class="face">Y</div>
+      <div class="face">O</div>
+      <div class="face">U</div>
+    </div>
+    <div class="cube faces-3" id="rest2">
+      <div class="face">F</div>
+      <div class="face">O</div>
+      <div class="face">U</div>
+    </div>
+  </div>
+
+  <!-- Row 3: 2-face drum. Rest="F", Spin: A/T -->
+  <div class="slot" id="slot3">
+    <div class="cube faces-2" id="spin3" style="display:none">
+      <div class="face">A</div>
+      <div class="face">T</div>
+    </div>
+    <div class="cube faces-2" id="rest3">
+      <div class="face">F</div>
+      <div class="face">T</div>
+    </div>
+  </div>
+
+  <!-- Row 4: 4-face drum. Rest="F", Spin: O/F/F/F -->
+  <div class="slot" id="slot4">
+    <div class="cube faces-4" id="spin4" style="display:none">
+      <div class="face">O</div>
+      <div class="face">F</div>
+      <div class="face">F</div>
+      <div class="face">F</div>
+    </div>
+    <div class="cube faces-4" id="rest4">
+      <div class="face">F</div>
+      <div class="face">F</div>
+      <div class="face">F</div>
+      <div class="face">F</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const btn      = document.getElementById("start-btn");
+const startSc  = document.getElementById("start-screen");
+const scene    = document.getElementById("scene");
+
+// Config per drum: lerp speed, return speed, degrees per face-step, face count
+const cubes = [
+  { lerp: 0.075, returnLerp: 0.22, step: 120, faceCount: 3 },
+  { lerp: 0.045, returnLerp: 0.20, step: 120, faceCount: 3 },
+  { lerp: 0.048, returnLerp: 0.18, step: 180, faceCount: 2 },
+  { lerp: 0.040, returnLerp: 0.22, step:  90, faceCount: 4 },
+].map((c, i) => ({
+  ...c,
+  slot:      document.getElementById(`slot${i+1}`),
+  spinCube:  document.getElementById(`spin${i+1}`),
+  restCube:  document.getElementById(`rest${i+1}`),
+  rot: 0, target: 0,       // current angle and target angle
+  faceIndex: 0,
+  lastFaceStep: 0,
+  atRest: true,
+  returning: false,
+  leavingRest: false,
+}));
+
+// Show resting state at init
+cubes.forEach(c => {
+  c.spinCube.style.display = "none";
+  c.restCube.style.display = "block";
+});
+
+let tiltX = 0;   // lateral acceleration from gyro (m/s²)
+let beta  = 0;   // front-back tilt angle (°)
+let lastMove = 0;
+
+const THRESHOLD     = 0.8;  // minimum tiltX before rotation kicks in
+const VELOCITY_SCALE = 6.0; // degrees/frame per m/s² of tilt
+const UPRIGHT_MIN   = 50;   // phone must be held upright (beta > 50°)
+
+function showSpin(c) {
+  c.leavingRest = false;
+  c.spinCube.style.display = "block";
+  c.restCube.style.display = "none";
+}
+function showRest(c) {
+  c.atRest = true; c.returning = false; c.leavingRest = false;
+  c.spinCube.style.display = "none";
+  c.restCube.style.display = "block";
+}
+
+// Discrete step (used by touch swipe)
+function trigger(dir) {
+  cubes.forEach(c => {
+    c.faceIndex = ((c.faceIndex + dir) % c.faceCount + c.faceCount) % c.faceCount;
+    c.target += dir * c.step;
+    c.returning = false;
+    if (c.atRest) { c.atRest = false; c.leavingRest = true; }
+  });
+  lastMove = Date.now();
+}
+
+function handleOrientation(e) { beta  = e.beta  || 0; }
+function handleMotion(e)      { if (e.accelerationIncludingGravity) tiltX = e.accelerationIncludingGravity.x || 0; }
+
+function loop() {
+  // Only respond when phone is upright
+  const isUpright = Math.abs(beta) > UPRIGHT_MIN;
+  const deadband  = isUpright && tiltX >  THRESHOLD ? tiltX - THRESHOLD
+                  : isUpright && tiltX < -THRESHOLD ? tiltX + THRESHOLD
+                  : 0;
+
+  if (deadband !== 0) {
+    lastMove = Date.now();
+    cubes.forEach(c => {
+      if (c.atRest) { c.atRest = false; c.leavingRest = true; }
+      c.returning = false;
+      c.target += deadband * VELOCITY_SCALE;
+    });
+  }
+
+  const idleMs = Date.now() - lastMove;
+
+  cubes.forEach(c => {
+    // Smooth interpolation toward target
+    c.rot += (c.target - c.rot) * (c.returning ? c.returnLerp : c.lerp);
+    c.slot.style.transform = `translateX(-50%) rotateY(${c.rot}deg)`;
+
+    // Haptic pulse each time a new face clicks into view
+    const faceStep = Math.floor(Math.abs(c.rot) / c.step);
+    if (faceStep !== c.lastFaceStep) {
+      c.lastFaceStep = faceStep;
+      if (navigator.vibrate) navigator.vibrate(8);
+    }
+
+    if (c.atRest) return;
+
+    // face1 is hidden when rotated 90°–270° (facing away)
+    const r = ((c.rot % 360) + 360) % 360;
+    const face1Hidden = r >= 90 && r <= 270;
+
+    // Swap rest→spin once face1 rotates into the hidden zone
+    if (c.leavingRest && face1Hidden) showSpin(c);
+
+    const settled = Math.abs(c.rot - c.target) < 0.5;
+
+    // After 200ms idle and settled, start returning to home position
+    if (!c.leavingRest && !c.returning && settled && idleMs > 200) {
+      c.returning = true;
+      c.target = Math.round(c.target / 360) * 360;
+    }
+
+    // While returning: swap back to rest when face1 is front-facing
+    if (c.returning) {
+      if (face1Hidden) { showRest(c); }
+      else if (Math.abs(c.rot - c.target) < 0.5) {
+        c.target += 360; // extend by one extra turn if needed
+      }
+    }
+  });
+
+  requestAnimationFrame(loop);
+}
+
+// Touch swipe
+let touchStartX = 0;
+window.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+window.addEventListener("touchend",   e => {
+  if (scene.style.display === "none") return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 40) trigger(dx < 0 ? -1 : 1);
+}, { passive: true });
+
+// Keyboard fallback (desktop testing)
+window.addEventListener("keydown", e => {
+  if (scene.style.display === "none") return;
+  if (e.key === "ArrowRight") { tiltX = -3; beta = 90; }
+  if (e.key === "ArrowLeft")  { tiltX =  3; beta = 90; }
+});
+window.addEventListener("keyup", e => {
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") { tiltX = 0; beta = 0; }
+});
+
+// Start button — requests iOS sensor permissions first
+btn.onclick = () => {
+  const go = () => {
+    startSc.style.display = "none";
+    scene.style.display   = "block";
+    window.addEventListener("deviceorientation", handleOrientation);
+    window.addEventListener("devicemotion",      handleMotion);
+    loop();
+  };
+
+  const reqO = typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function"
+    ? DeviceOrientationEvent.requestPermission() : Promise.resolve("granted");
+  const reqM = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function"
+    ? DeviceMotionEvent.requestPermission() : Promise.resolve("granted");
+
+  Promise.all([reqO, reqM]).then(go).catch(go);
+};
+</script>
+</body>
+</html>
